@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class Rules(object):
     def __init__(self, rules_file):
         data = self._load_yaml(rules_file)
-        self.actions_to_ignore = ['action_listen', 'action_invalid_utterance']
+        self.actions_to_ignore = ['action_listen', 'action_invalid_utterance', 'enforced_utterance', 'pattern_breaker_utterance']
         self.allowed_entities = data["allowed_entities"] if data and "allowed_entities" in data else {}
         self.intent_substitutions = data["intent_substitutions"] if data and "intent_substitutions" in data else []
         self.input_validation = InputValidator(data["input_validation"]) if data and "input_validation" in data else []
@@ -54,7 +54,7 @@ class Rules(object):
 
         if self.output_enforcer:
             output_enforcer_template = self.output_enforcer.get_output_enforcer(parse_data, tracker)
-            if pattern_breaker_template is not None:
+            if output_enforcer_template is not None:
                 self._utter_output_enforcer_template(dispatcher, tracker, output_enforcer_template, run_action)
                 return True
 
