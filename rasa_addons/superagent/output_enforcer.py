@@ -34,8 +34,8 @@ class OutputEnforcer(object):
             return None
         return self.get_output_enforcer_template(parse_data, previous_action, intent)
 
-    def get_output_enforcer_template(self, parse_data, intent):
-        rule = self.find(intent)
+    def get_output_enforcer_template(self, parse_data, previous_action, intent):
+        rule = self.find(previous_action)
         if rule is None:
             return None
         if rule['then'] is None:
