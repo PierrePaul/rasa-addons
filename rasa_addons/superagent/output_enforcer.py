@@ -3,6 +3,9 @@ import yaml
 import re
 from rasa_core.actions.action import Action
 from rasa_core.events import ActionExecuted
+from rasa_core.events import ReminderScheduled
+from datetime import timedelta
+from datetime import datetime
 
 # easy way to force the bot to follow specific story flows when they are encountered regardless of training. This could be important for touchy subject matter when deviation from the script could prove troublesome.
 # after bot utters x, and user inputs intent y, perform action(s) z.
@@ -10,6 +13,8 @@ from rasa_core.events import ActionExecuted
 # output_enforcer:
 #  - after: utter_ask_mood_activity
 #    then: tell_activity
+#       - entities:
+#           - time
 #    enforce: utter_ask_mood_choices
 class OutputEnforcer(object):
     def __init__(self, rules):
@@ -44,6 +49,13 @@ class OutputEnforcer(object):
         if rule['enforce'] is None:
             # ToDo for now, simply ensuring that the info exists, not that the template exists.
             return None
+        parse_entities = map(lambda e: e['entity'], parse_data['entities'])
+
+        # ok if no entities are expected or if expected entities are a subset of parse_entities
+        # entities_ok = 'entities' not in rule or set(rule['entities']).issubset(parse_entities)
+        # if entities_ok:
+        #     return None
+
         return rule['enforce']
 
     @staticmethod
@@ -72,9 +84,10 @@ class EnforcedUtterance(Action):
         self.template = template
 
     def run(self, dispatcher, tracker, domain):
-        dispatcher.utter_template(self.template, tracker)
+        # dispatcher.utter_template(self.template, tracker)
+        reminder_at = datetime.now() + timedelta(microseconds=100000)
 
-        return []
+        return [ReminderScheduled(self.template, reminder_at)]
 
     def name(self):
         return 'enforced_utterance'

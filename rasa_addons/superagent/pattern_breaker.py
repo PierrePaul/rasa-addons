@@ -1,6 +1,9 @@
 import io
 import yaml
 import re
+from rasa_core.events import ReminderScheduled
+from datetime import timedelta
+from datetime import datetime
 from rasa_core.actions.action import Action
 
 # This added functionality ensures that when the bot encounters an intent, regardless of conversational flow, it skips to a specific topic. Important to ensure immediate response to urgent matters regardless of training.
@@ -52,9 +55,10 @@ class PatternBreakerUtterance(Action):
         self.template = template
 
     def run(self, dispatcher, tracker, domain):
-        dispatcher.utter_template(self.template, tracker)
+        # dispatcher.utter_template(self.template, tracker)
+        reminder_at = datetime.now() + timedelta(microseconds=100000)
 
-        return []
+        return [ReminderScheduled(self.template, reminder_at)]
 
     def name(self):
         return 'pattern_breaker_utterance'
