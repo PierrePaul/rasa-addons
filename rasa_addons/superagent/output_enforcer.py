@@ -11,7 +11,7 @@ from rasa_core.events import ActionExecuted
 #  - after: utter_ask_mood_activity
 #    then: tell_activity
 #    enforce: utter_ask_mood_choices
-class PatternBreaker(object):
+class OutputEnforcer(object):
     def __init__(self, rules):
         self.rules = rules if rules is not None else []
         self.actions_to_ignore = ['action_listen', 'enforced_utterance']
