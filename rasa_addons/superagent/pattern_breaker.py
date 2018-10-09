@@ -2,7 +2,7 @@ import io
 import yaml
 import re
 from rasa_core.actions.action import Action
-from rasa_core.events import ActionExecuted, ActionReverted
+from rasa_core.events import ActionExecuted
 
 # This added functionality ensures that when the bot encounters an intent, regardless of conversational flow, it skips to a specific topic. Important to ensure immediate response to urgent matters regardless of training.
 # after intent, then utter.
