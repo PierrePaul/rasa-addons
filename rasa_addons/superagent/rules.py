@@ -8,7 +8,9 @@ from rasa_core.events import ActionExecuted
 
 from rasa_addons.superagent.disambiguator import Disambiguator
 from rasa_addons.superagent.input_validator import InputValidator
+from rasa_addons.superagent.pattern_breaker import PatternBreaker
 
+from rasa_addons.superagent.pattern_breaker import PatternBreakerUtterance
 from rasa_addons.superagent.input_validator import ActionInvalidUtterance
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,8 @@ class Rules(object):
         self.allowed_entities = data["allowed_entities"] if data and "allowed_entities" in data else {}
         self.intent_substitutions = data["intent_substitutions"] if data and "intent_substitutions" in data else []
         self.input_validation = InputValidator(data["input_validation"]) if data and "input_validation" in data else []
-        self.disambiguation_policy = Disambiguator(data.get("disambiguation_policy", None) if data else None, 
+        self.pattern_breaker = PatternBreaker(data["pattern_breaker"]) if data and "pattern_breaker" in data else []
+        self.disambiguation_policy = Disambiguator(data.get("disambiguation_policy", None) if data else None,
                                                    data.get("fallback_policy", None) if data else None)
 
     def interrupts(self, dispatcher, parse_data, tracker, run_action):
@@ -40,9 +43,20 @@ class Rules(object):
                 self._utter_error_and_roll_back(dispatcher, tracker, error_template, run_action)
                 return True
 
+        if self.pattern_breaker:
+            pattern_breaker_template = self.pattern_breaker.get_pattern_breaker(parse_data, tracker)
+            if pattern_breaker_template is not None:
+                self._utter_pattern_breaker_template(dispatcher, tracker, pattern_breaker_template, run_action)
+                return True
+
     @staticmethod
     def _utter_error_and_roll_back(dispatcher, tracker, template, run_action):
         action = ActionInvalidUtterance(template)
+        run_action(action, tracker, dispatcher)
+
+    @staticmethod
+    def _utter_pattern_breaker_template(dispatcher, tracker, template, run_action):
+        action = PatternBreakerUtterance(template)
         run_action(action, tracker, dispatcher)
 
     def filter_entities(self, parse_data):
