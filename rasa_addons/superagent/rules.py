@@ -53,9 +53,9 @@ class Rules(object):
                 return True
 
         if self.output_enforcer:
-            output_enforcer_template = self.output_enforcer.get_output_enforcer(parse_data, tracker)
-            if output_enforcer_template is not None:
-                self._utter_output_enforcer_template(dispatcher, tracker, output_enforcer_template, run_action)
+            output_enforcer_actions = self.output_enforcer.get_output_enforcer(parse_data, tracker)
+            if output_enforcer_actions is not None:
+                self._utter_output_enforcer_actions(dispatcher, tracker, output_enforcer_actions, run_action)
                 return True
 
     @staticmethod
@@ -69,8 +69,8 @@ class Rules(object):
         run_action(action, tracker, dispatcher)
 
     @staticmethod
-    def _utter_output_enforcer_template(dispatcher, tracker, template, run_action):
-        action = EnforcedUtterance(template)
+    def _utter_output_enforcer_actions(dispatcher, tracker, actions, run_action):
+        action = EnforcedUtterance(actions)
         run_action(action, tracker, dispatcher)
 
     def filter_entities(self, parse_data):

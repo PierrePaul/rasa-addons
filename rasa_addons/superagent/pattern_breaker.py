@@ -1,7 +1,7 @@
 import io
 import yaml
 import re
-from rasa_core.events import ReminderScheduled
+from rasa_core.events import ReminderScheduled, ActionReverted
 from datetime import timedelta
 from datetime import datetime
 from rasa_core.actions.action import Action
@@ -37,7 +37,7 @@ class PatternBreaker(object):
         if rule is None:
             return None
         if rule['then'] is None:
-            # ToDo for now, simply ensuring that the info exists, not validating it is an actual template... to be honest, not clear how that works yet. Will implement when I do.
+            # TODO for now, simply ensuring that the info exists, not validating it is an actual template... to be honest, not clear how that works yet. Will implement when I do.
             return None
         return rule['then']
 
@@ -55,10 +55,9 @@ class PatternBreakerUtterance(Action):
         self.template = template
 
     def run(self, dispatcher, tracker, domain):
-        # dispatcher.utter_template(self.template, tracker)
-        reminder_at = datetime.now() + timedelta(microseconds=100000)
+        reminder_at = datetime.now() + timedelta(microseconds=200000)
 
-        return [ReminderScheduled(self.template, reminder_at)]
+        return [ActionReverted(), ActionReverted(), ReminderScheduled(self.template, reminder_at)]
 
     def name(self):
         return 'pattern_breaker_utterance'

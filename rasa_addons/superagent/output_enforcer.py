@@ -2,20 +2,11 @@ import io
 import yaml
 import re
 from rasa_core.actions.action import Action
-from rasa_core.events import ActionExecuted
-from rasa_core.events import ReminderScheduled
+from rasa_core.events import ActionExecuted, ActionReverted, ReminderScheduled
 from datetime import timedelta
 from datetime import datetime
 
-# easy way to force the bot to follow specific story flows when they are encountered regardless of training. This could be important for touchy subject matter when deviation from the script could prove troublesome.
-# after bot utters x, and user inputs intent y, perform action(s) z.
-# Format in rules.yml file
-# output_enforcer:
-#  - after: utter_ask_mood_activity
-#    then: tell_activity
-#       - entities:
-#           - time
-#    enforce: utter_ask_mood_choices
+# easy way to force the bot to follow specific story flows when they are encountered regardless of training
 class OutputEnforcer(object):
     def __init__(self, rules):
         self.rules = rules if rules is not None else []
@@ -24,10 +15,52 @@ class OutputEnforcer(object):
     def ignore_action(self, action_name):
         self.actions_to_ignore.append(action_name)
 
-    def find(self, after):
+    def find(self, after, intent, entity_values, tracker):
+        potential_matches = []
         for rule in self.rules:
-            if re.match(rule['after'], after):
-                return rule
+            if re.match(rule['after'], after) and re.match(rule['then'], intent):
+                potential_matches.append(rule)
+
+        if 0 < len(potential_matches):
+            return potential_matches[0]
+            entity_matches = []
+            slot_matches = []
+
+            is_simple = True
+            for rule in potential_matches:
+                if 'entities' in rule or 'slots' in rule:
+                    is_simple = False
+                    break
+            if is_simple:
+                return potential_matches.pop()
+
+            for rule in potential_matches:
+                is_valid = True
+                if 'entities' in rule:
+                    for entity in rule['entities']:
+                        if 'key' not in entity or entity['key'] not in entity_values or 'value' not in entity or entity_values[entity['key']] != entity['value']:
+                            is_valid = False
+                    if is_valid:
+                        entity_matches.append(rule)
+                is_valid = True
+                if 'slots' in rule:
+                    for slot in rule['slots']:
+                        if 'key' not in slot or tracker.get_slot(slot['key']) is None or 'value' not in slot and entity_values[entity['key']] != tracker.get_slot(slot['key']):
+                            is_valid = False
+                    if is_valid:
+                        slot_matches.append(rule)
+
+            # full_match = set(entity_matches).intersection(slot_matches)
+            #
+            # if 0 < len(full_match):
+            #     return full_match.pop()
+
+            if 0 < len(slot_matches):
+                return slot_matches.pop()
+
+            if 0 < len(entity_matches):
+                return entity_matches.pop()
+
         return None
 
     def get_output_enforcer(self, parse_data, tracker):
@@ -37,24 +70,17 @@ class OutputEnforcer(object):
             return None
         if intent is None:
             return None
-        return self.get_output_enforcer_template(parse_data, previous_action, intent)
+        return self.get_output_enforcer_template(parse_data, previous_action, intent, tracker)
 
-    def get_output_enforcer_template(self, parse_data, previous_action, intent):
-        rule = self.find(previous_action)
+    def get_output_enforcer_template(self, parse_data, previous_action, intent, tracker):
+        parse_entities = map(lambda e: e['entity'], parse_data['entities'])
+        entity_values =	{}
+        for entity in parse_data['entities']:
+            if 'value' in entity and 'key' in entity:
+                entity_values.update( {entity['key'] : entity['value']} )
+        rule = self.find(previous_action, intent, entity_values, tracker)
         if rule is None:
             return None
-        if rule['then'] is None:
-            # ToDo for now, simply ensuring that the info exists, not that the intent is valid.
-            return None
-        if rule['enforce'] is None:
-            # ToDo for now, simply ensuring that the info exists, not that the template exists.
-            return None
-        parse_entities = map(lambda e: e['entity'], parse_data['entities'])
-
-        # ok if no entities are expected or if expected entities are a subset of parse_entities
-        # entities_ok = 'entities' not in rule or set(rule['entities']).issubset(parse_entities)
-        # if entities_ok:
-        #     return None
 
         return rule['enforce']
 
@@ -80,14 +106,18 @@ class OutputEnforcer(object):
 
 
 class EnforcedUtterance(Action):
-    def __init__(self, template):
-        self.template = template
+    def __init__(self, actions):
+        self.actions = actions
 
     def run(self, dispatcher, tracker, domain):
-        # dispatcher.utter_template(self.template, tracker)
-        reminder_at = datetime.now() + timedelta(microseconds=100000)
 
-        return [ReminderScheduled(self.template, reminder_at)]
+        delta_time = 100000
+        send_reminders = [ActionReverted()]
+        for action_to_perform in self.actions:
+            reminder_at = datetime.now() + timedelta(microseconds=delta_time)
+            send_reminders.append(ReminderScheduled(action_to_perform, reminder_at, kill_on_user_message=False))
+            delta_time += 100000
+        return send_reminders
 
     def name(self):
         return 'enforced_utterance'

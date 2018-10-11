@@ -68,20 +68,20 @@ Rules are enforced at the tracker level, so there is no need to retrain when cha
 ### Disambiguation policy
 
 Help your users when your NLU struggles to identify the right intent. Instead of just going with the highest scoring intent
-you can ask the user to pick from a list of likely intents. 
+you can ask the user to pick from a list of likely intents.
 
 In the example below, the disambiguation is triggered when the score of the highest scoring intent is below twice the score of the second highest scoring intent.
 
 The bot will utter:  
 1. An intro message (if the optional field `intro_template` is present)  
 2. A text with buttons (or quick replies) message where:  
- - the text is the template defined as `text_template`, 
+ - the text is the template defined as `text_template`,
  - the button titles will be the concatenation of "utter_disamb" and the intent name. For example, `utter_disamb_greet`."   
  - the buttons payloads will be the corresponding intents (e.g. `/greet`). Entities found in `parse_data` are passed on.
-3. A fallback button to go along with disambiguation buttons (if the optional field `fallback_button` is present) 
+3. A fallback button to go along with disambiguation buttons (if the optional field `fallback_button` is present)
 
 It's also possible to exclude certain intents from being displayed as a disambiguation option by using optional `exclude` list field. In the example below, all intents that match regex `chitchat\..*` and `basics\..*`, as well as intent `cancel` will not be displayed as an option. The next highest scoring intents will be displayed in place of excluded ones.
- 
+
 ```yaml
 disambiguation_policy:
   trigger: $0 < 2 * $1
@@ -141,7 +141,7 @@ fallback_policy:
 In cases when intent confidence scores in parsed data are such that would cause both policies to trigger, only fallback policy is trigerred. In other words, **fallback policy has precedence over disambiguation policy**.
 
 ## Swap intents
-Some intents are hard to catch. For example when the user is asked to fill arbitrary data such as a date or a proper noun. 
+Some intents are hard to catch. For example when the user is asked to fill arbitrary data such as a date or a proper noun.
 The following rule swaps any intent caught after `utter_when_do_you_want_a_wake_up_call` with `enter_data` unless...
 
 ```yaml
@@ -183,7 +183,7 @@ class MyDispatcher(Dispatcher):
             r = response.json()
             if r is not None:
                 return self._fill_template_text(r, filled_slots, **kwargs)
-            
+
         else:
             print("error")
 
@@ -198,7 +198,7 @@ agent = SuperAgent.load(POLICY_PATH,
 ```
 
 ## Run automated tests (experimental)
-You can write test cases as you would write stories, except you should only have `utter_...` actions. 
+You can write test cases as you would write stories, except you should only have `utter_...` actions.
 
 ```markdown
 ## chitchat.greet
@@ -224,3 +224,56 @@ You can put your test cases in different files starting with `test` (e.g. `test_
 At this time, it only runs the test and outputs dialogues in the console (errors in red). There is no report (Help wanted).
 You can also use `--distinct` to change the `sender_id` at every test case and `--shuffle` to shuffle test cases before running the tests.
 
+## Pattern breaker
+
+The pattern breaker rules ensure that when the bot encounters an intent, regardless of conversational flow, it skips to a specific topic. Important to ensure immediate response to urgent matters regardless of training.
+
+In `rules.yml` you can add pattern breaker rules as follows
+
+```yaml
+pattern_breaker:
+  - after: help
+    then: utter_help_intro
+```
+The following rule will utter the `utter_help_intro` if the user inputs the /help intent regardless of where it finds itself in a conversation.
+
+## Output enforcer
+
+The output enforcer rules are an easy way to force the bot to follow specific story flows when they are encountered regardless of training. This could be important for touchy subject matter when deviation from the script could prove troublesome.
+
+In `rules.yml` you can add output enforcer rules as follows
+
+```yaml
+output_enforcer:
+  - after: utter_ask_mood_intro
+    then: deny
+    enforce:
+      - utter_ok
+      - utter_say_goodbye
+  - after: utter_say_goodbye
+    then: goodbye
+    entities:
+      - entity:
+        key: ask_mood_context
+        value: reminder_tomorrow
+      - entity:
+        key: time_delta
+        value: 12
+    slots:
+      - slot:
+        key: slot_key
+        value: slot_value
+    enforce:
+      - action_set_next_ask_mood
+```
+The following rule will ensure the bot executes 'utter_ok' followed by 'utter_say_goodbye' if the user inputs the /deny intent to the 'utter_ask_mood_intro' bot text, regardless of its neural net training.
+
+Distinct submitted entities are optionally supported. They are to be specified only when they will lead to different outcomes, and require the key/value pair.
+
+Same goes for slots. They should be specified if their distinct values leads to different outcomes and require a key/value pair.
+
+The bot will prioritize a path with both matching slots and entities, otherwise will favour matching slots over entities.
+
+If more than one valid matching rule is found, the last rule entered in the file will be used.
+
+This is essentially a leash, and when paired with the input validation rules, can allow for a truly controlled conversation.
