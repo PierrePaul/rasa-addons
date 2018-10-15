@@ -89,7 +89,7 @@ class OutputEnforcer(object):
         for action_to_perform in rule['enforce']:
             reminder_at = datetime.now() + timedelta(microseconds=delta_time)
             result.append(ReminderScheduled(action_to_perform, reminder_at, kill_on_user_message=False))
-            delta_time += 200000
+            delta_time += 500000
         return result
 
     @staticmethod
