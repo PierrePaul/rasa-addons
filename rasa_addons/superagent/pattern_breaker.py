@@ -6,12 +6,7 @@ from datetime import timedelta
 from datetime import datetime
 from rasa_core.actions.action import Action
 
-# This added functionality ensures that when the bot encounters an intent, regardless of conversational flow, it skips to a specific topic. Important to ensure immediate response to urgent matters regardless of training.
-# after intent, then utter.
-# Format in rules.yml file
-# pattern_breaker:
-#  - after: help
-#    then: utter_help_intro
+# This added functionality ensures that when the bot encounters an intent, regardless of conversational flow, it skips to a specific topic.
 class PatternBreaker(object):
     def __init__(self, rules):
         self.rules = rules if rules is not None else []
@@ -57,7 +52,7 @@ class PatternBreakerUtterance(Action):
     def run(self, dispatcher, tracker, domain):
         reminder_at = datetime.now() + timedelta(microseconds=200000)
 
-        return [ActionReverted(), ActionReverted(), ReminderScheduled(self.template, reminder_at)]
+        return [ActionReverted(), ActionReverted(), ReminderScheduled(self.template, reminder_at, kill_on_user_message=False)]
 
     def name(self):
         return 'pattern_breaker_utterance'
