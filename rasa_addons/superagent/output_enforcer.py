@@ -83,6 +83,7 @@ class OutputEnforcer(object):
         # TODO perhaps a better approach is to get next predicted outcome and if it matches rule['enforce'] return None
         delta_time = 200000
         result = [ActionReverted(), ActionReverted()]
+        result.append(SlotSet('last_message', parse_data['text']))
         for ent in parse_data['entities']:
             if 'value' in ent and 'entity' in ent:
                 result.append(SlotSet(ent['entity'], ent['value']))
