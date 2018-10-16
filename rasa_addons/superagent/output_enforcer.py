@@ -81,7 +81,7 @@ class OutputEnforcer(object):
             return None
 
         # TODO perhaps a better approach is to get next predicted outcome and if it matches rule['enforce'] return None
-        delta_time = 200000
+        delta_time = 1000000
         result = [ActionReverted(), ActionReverted()]
         result.append(SlotSet('last_message', parse_data['text']))
         for ent in parse_data['entities']:
@@ -90,7 +90,7 @@ class OutputEnforcer(object):
         for action_to_perform in rule['enforce']:
             reminder_at = datetime.now() + timedelta(microseconds=delta_time)
             result.append(ReminderScheduled(action_to_perform, reminder_at, kill_on_user_message=False))
-            delta_time += 500000
+            delta_time += 1000000
         return result
 
     @staticmethod
