@@ -1,7 +1,7 @@
 import io
 import yaml
 import re
-from rasa_core.events import ReminderScheduled, ActionReverted
+from rasa_core.events import ReminderScheduled, ActionReverted, SlotSet
 from datetime import timedelta
 from datetime import datetime
 from rasa_core.actions.action import Action
@@ -34,7 +34,15 @@ class PatternBreaker(object):
         if rule['then'] is None:
             # TODO for now, simply ensuring that the info exists, not validating it is an actual template... to be honest, not clear how that works yet. Will implement when I do.
             return None
-        return rule['then']
+        delta_time = 1000000
+        reminder_at = datetime.now() + timedelta(microseconds=delta_time)
+        result = [ActionReverted(), ActionReverted()]
+        result.append(SlotSet('last_message', parse_data['text']))
+        for ent in parse_data['entities']:
+            if 'value' in ent and 'entity' in ent:
+                result.append(SlotSet(ent['entity'], ent['value']))
+        result.append(ReminderScheduled(rule['then'], reminder_at, kill_on_user_message=False))
+        return result
 
     @staticmethod
     def _load_yaml(rules_file):
@@ -46,13 +54,11 @@ class PatternBreaker(object):
 
 
 class PatternBreakerUtterance(Action):
-    def __init__(self, template):
-        self.template = template
+    def __init__(self, actions):
+        self.actions = actions
 
     def run(self, dispatcher, tracker, domain):
-        reminder_at = datetime.now() + timedelta(microseconds=200000)
-
-        return [ActionReverted(), ActionReverted(), ReminderScheduled(self.template, reminder_at, kill_on_user_message=False)]
+        return self.actions
 
     def name(self):
         return 'pattern_breaker_utterance'
