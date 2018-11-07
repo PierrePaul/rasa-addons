@@ -9,6 +9,7 @@ class InputValidator(object):
     def __init__(self, rules):
         self.rules = rules if rules is not None else []
         self.actions_to_ignore = ['action_listen', 'action_invalid_utterance']
+        self.intents_to_ignore  = ['pause', 'restart', 'resume', 'help']
 
     def ignore_action(self, action_name):
         self.actions_to_ignore.append(action_name)
@@ -30,7 +31,7 @@ class InputValidator(object):
         if rule is None:
             return None
         for expected in rule['expected']:
-            intent_ok = 'intents' not in expected or parse_data["intent"]["name"] in expected['intents']
+            intent_ok = 'intents' not in expected or parse_data["intent"]["name"] in expected['intents'] or parse_data["intent"]["name"] in self.intents_to_ignore
             parse_entities = map(lambda e: e['entity'], parse_data['entities'])
 
             # ok if no entities are expected or if expected entities are a subset of parse_entities
